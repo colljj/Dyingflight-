@@ -1,49 +1,47 @@
-name: build
-on: [push, workflow_dispatch]
+package com.example.dynflight;
 
-jobs:
-  build:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: checkout repository
-        uses: actions/checkout@v6
-      - name: arrange project files
-        run: |
-          mkdir -p src/client/java/com/example/dynflight src/main/resources
-          mv DynFlightClient.java src/client/java/com/example/dynflight/
-          mv fabric.mod.json src/main/resources/
-      - name: setup jdk
-        uses: actions/setup-java@v5
-        with:
-          java-version: '25'
-          distribution: 'microsoft'
-      - name: setup gradle
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: '9.8.2'
-      - name: build
-        run: gradle build
-      - name: upload mod jar
-        uses: actions/upload-artifact@v7
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.entity.player.Abilities;
+import net.minecraft.world.phys.Vec3;
+
+public class DynFlightClient implements ClientModInitializer {
+    private static final double SPEED = 1.0;
+    private static final double VERTICAL_BOOST = 0.6;
+    private static final boolean AUTO_FLY = true;
+
+    @Override
+    public void onInitializeClient() {
+        ClientTickEvents.END_CLIENT_TICK.register(this::tick);
+    }
+
+    private void tick(Minecraft mc) {
+        LocalPlayer p = mc.player;
         if (p == null || p.isSpectator()) return;
-          name: Artifacts
-          path: build/libs/
-      - name: decompile minecraft sources
-        continue-on-error: true
-        run: |
-          gradle genSources
-          mkdir -p out tmp
-          for jar in $(find ~/.gradle .gradle -name '*sources*.jar' 2>/dev/null | grep -i minecraft); do
-            unzip -qo "$jar" -d tmp || true
-          done
-          for name in PlayerModel HumanoidModel AvatarRenderer AvatarRenderState LivingEntityRenderer; do
-            find tmp -name "$name.java" -exec cp {} out/ \;
-          done
-          ls -la out
-      - name: upload sources
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: MC-sources
-          path: out/
-          if-no-files-found: ignore
+
+        Abilities ab = p.getAbilities();
+        if (!ab.mayfly) return;
+
+        if (AUTO_FLY && !p.onGround() && !ab.flying) {
+            ab.flying = true;
+            p.onUpdateAbilities();
+        }
+        if (!ab.flying) return;
+
+        var o = mc.options;
+        double forward = (o.keyUp.isDown() ? 1 : 0) - (o.keyDown.isDown() ? 1 : 0);
+        double strafe = (o.keyLeft.isDown() ? 1 : 0) - (o.keyRight.isDown() ? 1 : 0);
+        double vertical = (o.keyJump.isDown() ? 1 : 0) - (o.keyShift.isDown() ? 1 : 0);
+
+        Vec3 look = p.getLookAngle().normalize();
+        Vec3 left = new Vec3(look.z, 0, -look.x).normalize();
+
+        Vec3 motion = look.scale(forward * SPEED)
+                .add(left.scale(strafe * SPEED))
+                .add(0, vertical * VERTICAL_BOOST, 0);
+
+        p.setDeltaMovement(motion);
+    }
+}
