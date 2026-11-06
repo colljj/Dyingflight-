@@ -24,8 +24,8 @@ public class DynFlightClient implements ClientModInitializer {
     }
 
     private void tick(Minecraft mc) {
-        LocalPlayer p = mc.player;
-        if (p == null || mc.screen != null || p.isSpectator()) return;
+        LocalPlayer p = mc.player
+            if (p == null || p.isSpectator()) return 
 
         Abilities ab = p.getAbilities();
         if (!ab.mayfly) return; // server did not allow flight -> do nothing
