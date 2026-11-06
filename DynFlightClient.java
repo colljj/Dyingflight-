@@ -7,16 +7,10 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.phys.Vec3;
 
-/**
- * Client-side 3D flight: moves in the direction you look.
- * Works only when the server already lets you fly (creative / allowed flight),
- * so server rules are never bypassed.
- */
 public class DynFlightClient implements ClientModInitializer {
-    // Tweak these
-    private static final double SPEED = 1.0;        // blocks per tick (~20 b/s per 1.0)
-    private static final double VERTICAL_BOOST = 0.6; // space / shift speed
-    private static final boolean AUTO_FLY = true;   // start flying automatically in the air
+    private static final double SPEED = 1.0;
+    private static final double VERTICAL_BOOST = 0.6;
+    private static final boolean AUTO_FLY = true;
 
     @Override
     public void onInitializeClient() {
@@ -24,11 +18,11 @@ public class DynFlightClient implements ClientModInitializer {
     }
 
     private void tick(Minecraft mc) {
-        LocalPlayer p = mc.player
-            if (p == null || p.isSpectator()) return 
+        LocalPlayer p = mc.player;
+        if (p == null || p.isSpectator()) return;
 
         Abilities ab = p.getAbilities();
-        if (!ab.mayfly) return; // server did not allow flight -> do nothing
+        if (!ab.mayfly) return;
 
         if (AUTO_FLY && !p.onGround() && !ab.flying) {
             ab.flying = true;
@@ -48,7 +42,6 @@ public class DynFlightClient implements ClientModInitializer {
                 .add(left.scale(strafe * SPEED))
                 .add(0, vertical * VERTICAL_BOOST, 0);
 
-        // No input -> hover, like vanilla creative flight
         p.setDeltaMovement(motion);
     }
 }
